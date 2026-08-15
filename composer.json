@@ -1,0 +1,20 @@
+{
+    "name": "stanley/inventory-system",
+    "description": "Inventory Management System - PT Indonesia Stanley Electric",
+    "type": "project",
+    "require": {
+        "php": "^8.1 || ^8.2 || ^8.3",
+        "phpoffice/phpspreadsheet": "^2.1",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}
