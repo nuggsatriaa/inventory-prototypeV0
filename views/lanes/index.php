@@ -2,8 +2,8 @@
     <!-- Header Page & Action Button -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-            <h2 class="text-xl font-bold text-slate-800">Master Data Group & Lane Produksi</h2>
-            <p class="text-slate-500 text-sm">Kelola daftar grup produksi, kategori, nomor lane, mesin, dan vendor subcont.</p>
+            <h2 class="text-xl font-bold text-slate-800">Master Lane Produksi & SubCont</h2>
+            <p class="text-slate-500 text-sm">Kelola daftar kategori, nomor lane dan mesin</p>
         </div>
         <div class="flex items-center gap-2">
             <button type="button" class="btn btn-success bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center gap-2 px-3 py-2 text-sm rounded-lg shadow-sm cursor-pointer" onclick="openModal('modalImportLane')">
@@ -15,15 +15,50 @@
         </div>
     </div>
 
+    <!-- allert -->
+    <?php if (isset($_GET['status'])): ?>
+        <?php if ($_GET['status'] === 'success'): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Berhasil!</strong> Data Master Lane berhasil di-import.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php elseif ($_GET['status'] === 'error_upload'): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Gagal!</strong> Terjadi kesalahan saat mengunggah file Excel.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
+    <!-- TABLE CONTROLS (FILTER & ROW LIMIT) -->
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4 text-xs font-semibold text-slate-600">
+        <!-- Limit Row Per Page -->
+        <div class="flex items-center gap-2">
+            <span>Tampilkan</span>
+            <select id="rowLimit" onchange="updateTable()" class="form-select form-select-sm w-auto text-xs rounded-md border-slate-300">
+                <option value="10" selected>10</option>
+                <option value="30">30</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <span>data</span>
+        </div>
+
+        <!-- Filter Search Box -->
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+            <span>Cari:</span>
+            <input type="text" id="searchInput" onkeyup="updateTable()" placeholder="Ketik kata kunci..." class="form-control form-control-sm w-full sm:w-64 text-xs rounded-md border-slate-300">
+        </div>
+    </div>
+
     <!-- Data Table -->
     <div class="table-responsive">
-        <table class="table table-hover align-middle border-slate-200 text-sm mb-0">
+        <table id="customTable" class="table table-hover align-middle border-slate-200 text-sm mb-0">
             <thead class="table-light text-slate-700">
                 <tr>
                     <th style="width: 50px;">No</th>
                     <th>Grup</th>
                     <th>Category</th>
-                    <th>No Lane / MC / Vendor</th>
+                    <th>No Lane</th>
                     <th class="text-center" style="width: 100px;">Aksi</th>
                 </tr>
             </thead>
@@ -36,8 +71,8 @@
                     </tr>
                 <?php else: ?>
                     <?php foreach ($lanes as $index => $lane): ?>
-                        <tr>
-                            <td><?= $index + 1 ?></td>
+                        <tr class="table-row-data">
+                            <td class="row-number"><?= $index + 1 ?></td>
                             <td>
                                 <span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-md bg-purple-50 text-purple-700 border border-purple-200">
                                     <?= htmlspecialchars($lane['group_name'] ?? '-') ?>
@@ -68,6 +103,16 @@
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <!-- PAGINATION FOOTER CONTROLS -->
+    <div class="flex flex-col sm:flex-row justify-between items-center mt-4 text-xs text-slate-500 gap-2">
+        <div id="tableInfo">Menampilkan 0 data</div>
+        <div class="flex items-center gap-2" id="paginationControls">
+            <button id="prevBtn" onclick="changePage(-1)" class="btn btn-sm btn-light border text-xs px-3">Prev</button>
+            <span id="pageIndicator" class="px-2 font-medium text-slate-700">Halaman 1</span>
+            <button id="nextBtn" onclick="changePage(1)" class="btn btn-sm btn-light border text-xs px-3">Next</button>
+        </div>
     </div>
 </div>
 
@@ -137,7 +182,6 @@
                         <option value="LA1">LA1</option>
                         <option value="LA2">LA2</option>
                         <option value="SMT">SMT</option>
-                        <option value="OutPlant">OutPlant</option>
                     </select>
                 </div>
 
@@ -164,7 +208,7 @@
 <!-- 3. MODAL IMPORT EXCEL -->
 <div id="modalImportLane" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-        <form action="/lanes/import" method="POST" enctype="multipart/form-data">
+        <form action="/groups-lanes/import" method="POST" enctype="multipart/form-data">
             <div class="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
                 <h5 class="font-bold text-slate-800">Import Master Lane dari Excel</h5>
                 <button type="button" onclick="closeModal('modalImportLane')" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
@@ -192,7 +236,7 @@
     <input type="hidden" name="id" id="delete_lane_id">
 </form>
 
-<!-- JAVASCRIPT SYSTEM & DYNAMIC DROPDOWN -->
+<!-- JAVASCRIPT SYSTEM & DYNAMIC DROPDOWN & PAGINATION -->
 <script>
     // Pemetaan Relasi Grup -> Category
     const categoryMapping = {
@@ -210,12 +254,12 @@
         const categorySelect = document.getElementById(`${mode}_category_name`);
         const selectedGroup = groupSelect.value;
 
-        // Reset opsi category
-        categorySelect.innerHTML = '<option value="">-- Pilih Category --</option>';
+        categorySelect.innerHTML = '';
 
         if (selectedGroup && categoryMapping[selectedGroup]) {
-            categorySelect.disabled = false;
+            categorySelect.removeAttribute('disabled');
 
+            categorySelect.innerHTML = '<option value="">-- Pilih Category --</option>';
             categoryMapping[selectedGroup].forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat;
@@ -226,12 +270,11 @@
                 categorySelect.appendChild(option);
             });
 
-            // Jika hanya 1 pilihan category, otomatis pilih secara instan
-            if (categoryMapping[selectedGroup].length === 1 && !selectedCategory) {
+            if (!selectedCategory && categoryMapping[selectedGroup].length === 1) {
                 categorySelect.value = categoryMapping[selectedGroup][0];
             }
         } else {
-            categorySelect.disabled = true;
+            categorySelect.setAttribute('disabled', 'disabled');
             categorySelect.innerHTML = '<option value="">-- Pilih Grup Terlebih Dahulu --</option>';
         }
     }
@@ -263,7 +306,6 @@
         document.getElementById('edit_group_name').value = lane.group_name || '';
         document.getElementById('edit_lane_name').value = lane.lane_name || '';
 
-        // Update dropdown category di modal Edit sesuai grup dan otomatis terpilih category-nya
         updateCategoryDropdown('edit', lane.category_name || '');
 
         openModal('modalEditLane');
@@ -276,6 +318,64 @@
         }
     }
 
+    // JS PAGINATION & SEARCH CONTROL
+    let currentPage = 1;
+
+    function updateTable() {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const limit = parseInt(document.getElementById('rowLimit').value);
+        const rows = Array.from(document.querySelectorAll('#customTable tbody tr.table-row-data'));
+
+        if (rows.length === 0) return;
+
+        // Filter pencarian berdasarkan teks baris
+        const filteredRows = rows.filter(row => {
+            const text = row.innerText.toLowerCase();
+            return text.includes(searchInput);
+        });
+
+        // Hitung total halaman
+        const totalRows = filteredRows.length;
+        const totalPages = Math.ceil(totalRows / limit) || 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        // Sembunyikan semua baris
+        rows.forEach(row => row.style.display = 'none');
+
+        // Tampilkan hanya baris pada halaman aktif
+        const start = (currentPage - 1) * limit;
+        const end = start + limit;
+        const pageRows = filteredRows.slice(start, end);
+
+        pageRows.forEach((row, idx) => {
+            row.style.display = '';
+            const numCell = row.querySelector('.row-number');
+            if (numCell) numCell.innerText = start + idx + 1;
+        });
+
+        // Update Info & Status Tombol
+        const displayStart = totalRows > 0 ? start + 1 : 0;
+        const displayEnd = Math.min(end, totalRows);
+
+        const tableInfo = document.getElementById('tableInfo');
+        const pageIndicator = document.getElementById('pageIndicator');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        if (tableInfo) tableInfo.innerText = `Menampilkan ${displayStart} sampai ${displayEnd} dari ${totalRows} data`;
+        if (pageIndicator) pageIndicator.innerText = `Halaman ${currentPage} dari ${totalPages}`;
+
+        if (prevBtn) prevBtn.disabled = (currentPage === 1);
+        if (nextBtn) nextBtn.disabled = (currentPage === totalPages || totalRows === 0);
+    }
+
+    function changePage(direction) {
+        currentPage += direction;
+        updateTable();
+    }
+
     // Close modal jika user klik backdrop
     window.onclick = function(event) {
         ['modalAddLane', 'modalEditLane', 'modalImportLane'].forEach(id => {
@@ -285,4 +385,30 @@
             }
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+
+        if (status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Data Master Lane berhasil di-import.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else if (status === 'error_upload') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Upload!',
+                text: 'Terjadi kesalahan saat mengunggah file Excel.',
+            });
+        }
+
+        // Hapus query parameter dari URL agar notifikasi tidak muncul lagi saat di-refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+    });
+
+    document.addEventListener('DOMContentLoaded', updateTable);
 </script>

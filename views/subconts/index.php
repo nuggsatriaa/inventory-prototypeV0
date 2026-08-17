@@ -1,13 +1,16 @@
 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-    <!-- Header Page & Action Button -->
+    <!-- Header Page & Action Buttons -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-            <h2 class="text-xl font-bold text-slate-800">Master Data Customer</h2>
-            <p class="text-slate-500 text-sm">Kelola daftar nama perusahaan customer dan kode perusahaannya.</p>
+            <h2 class="text-xl font-bold text-slate-800">Master Data SubCont</h2>
+            <p class="text-slate-500 text-sm">Kelola daftar nama vendor subcont dan kategori operasionalnya.</p>
         </div>
         <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-success bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center gap-2 px-3 py-2 text-sm rounded-lg shadow-sm cursor-pointer" onclick="openModal('modalImportSubcont')">
+                <i class="bi bi-file-earmark-excel"></i> Import Excel
+            </button>
             <button type="button" class="btn btn-primary bg-blue-600 hover:bg-blue-700 text-white border-none flex items-center gap-2 px-3 py-2 text-sm rounded-lg shadow-sm cursor-pointer" onclick="openAddModal()">
-                <i class="bi bi-plus-lg"></i> Tambah Customer Baru
+                <i class="bi bi-plus-lg"></i> Tambah SubCont Baru
             </button>
         </div>
     </div>
@@ -29,7 +32,7 @@
         <!-- Filter Search Box -->
         <div class="flex items-center gap-2 w-full sm:w-auto">
             <span>Cari:</span>
-            <input type="text" id="searchInput" onkeyup="updateTable()" placeholder="Ketik kata kunci..." class="form-control form-control-sm w-full sm:w-64 text-xs rounded-md border-slate-300">
+            <input type="text" id="searchInput" onkeyup="updateTable()" placeholder="Ketik nama Vendor / Kategori" class="form-control form-control-sm w-full sm:w-64 text-xs rounded-md border-slate-300">
         </div>
     </div>
 
@@ -39,30 +42,30 @@
             <thead class="table-light text-slate-700">
                 <tr>
                     <th style="width: 50px;">No</th>
-                    <th>Nama Perusahaan</th>
-                    <th>Kode Perusahaan</th>
+                    <th>Nama SubCont</th>
+                    <th>Category</th>
                     <th class="text-center" style="width: 100px;">Aksi</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if (empty($customers)): ?>
+                <?php if (empty($subconts)): ?>
                     <tr>
                         <td colspan="4" class="text-center py-6 text-slate-400">
-                            Belum ada data Customer. Klik <strong>Tambah Customer Baru</strong> untuk menambahkan data.
+                            Belum ada data SubCont. Klik <strong>Tambah SubCont Baru</strong> atau <strong>Import Excel</strong> untuk menambahkan data.
                         </td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($customers as $index => $item): ?>
+                    <?php foreach ($subconts as $index => $item): ?>
                         <tr class="table-row-data">
                             <td class="row-number"><?= $index + 1 ?></td>
                             <td>
                                 <span class="font-semibold text-slate-700">
-                                    <?= htmlspecialchars($item['customer_name'] ?? '-') ?>
+                                    <?= htmlspecialchars($item['subcont_name'] ?? '-') ?>
                                 </span>
                             </td>
                             <td>
-                                <span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                                    <?= htmlspecialchars($item['customer_code'] ?? '-') ?>
+                                <span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                                    <?= htmlspecialchars($item['category'] ?? '-') ?>
                                 </span>
                             </td>
                             <td class="text-center">
@@ -71,7 +74,7 @@
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger px-2 py-1"
-                                    onclick="confirmDelete(<?= $item['id'] ?>, '<?= htmlspecialchars($item['customer_name'] ?? '') ?>')">
+                                    onclick="confirmDelete(<?= $item['id'] ?>, '<?= htmlspecialchars($item['subcont_name'] ?? '') ?>')">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -95,65 +98,101 @@
 
 <!-- ==================== MODALS ==================== -->
 
-<!-- 1. MODAL TAMBAH CUSTOMER -->
-<div id="modalAddCustomer" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+<!-- 1. MODAL TAMBAH SUBCONT -->
+<div id="modalAddSubcont" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-150">
-        <form action="/customers/store" method="POST">
+        <form action="/subconts/store" method="POST">
             <div class="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
-                <h5 class="font-bold text-slate-800">Tambah Customer Baru</h5>
-                <button type="button" onclick="closeModal('modalAddCustomer')" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
+                <h5 class="font-bold text-slate-800">Tambah SubCont Baru</h5>
+                <button type="button" onclick="closeModal('modalAddSubcont')" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
             </div>
             <div class="p-4 space-y-3">
                 <div>
-                    <label class="form-label text-xs font-bold text-slate-600">Nama Perusahaan</label>
-                    <input type="text" name="customer_name" class="form-control form-control-sm" required placeholder="Contoh: PT Honda Precision Parts Indonesia">
+                    <label class="form-label text-xs font-bold text-slate-600">Nama SubCont</label>
+                    <input type="text" name="subcont_name" class="form-control form-control-sm" required placeholder="Contoh: JSCREATIVE / HASURA">
                 </div>
 
                 <div>
-                    <label class="form-label text-xs font-bold text-slate-600">Kode Perusahaan</label>
-                    <input type="text" name="customer_code" class="form-control form-control-sm" required placeholder="Contoh: HPPI / CUST-001">
+                    <label class="form-label text-xs font-bold text-slate-600">Category</label>
+                    <select name="category" class="form-select form-select-sm" required>
+                        <option value="">-- Pilih Category --</option>
+                        <option value="Miko Plastik">Miko Plastik</option>
+                        <option value="Miko Cord CP">Miko Cord CP</option>
+                        <option value="Miko Material">Miko Material</option>
+                    </select>
                 </div>
             </div>
             <div class="flex justify-end gap-2 p-4 border-t border-slate-100 bg-slate-50">
-                <button type="button" onclick="closeModal('modalAddCustomer')" class="btn btn-sm btn-secondary">Batal</button>
+                <button type="button" onclick="closeModal('modalAddSubcont')" class="btn btn-sm btn-secondary">Batal</button>
                 <button type="submit" class="btn btn-sm btn-primary bg-blue-600 text-white">Simpan</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- 2. MODAL EDIT CUSTOMER -->
-<div id="modalEditCustomer" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+<!-- 2. MODAL EDIT SUBCONT -->
+<div id="modalEditSubcont" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-        <form action="/customers/update" method="POST">
-            <input type="hidden" name="id" id="edit_customer_id">
+        <form action="/subconts/update" method="POST">
+            <input type="hidden" name="id" id="edit_subcont_id">
 
             <div class="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
-                <h5 class="font-bold text-slate-800">Edit Data Customer</h5>
-                <button type="button" onclick="closeModal('modalEditCustomer')" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
+                <h5 class="font-bold text-slate-800">Edit Data SubCont</h5>
+                <button type="button" onclick="closeModal('modalEditSubcont')" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
             </div>
             <div class="p-4 space-y-3">
                 <div>
-                    <label class="form-label text-xs font-bold text-slate-600">Nama Perusahaan</label>
-                    <input type="text" name="customer_name" id="edit_customer_name" class="form-control form-control-sm" required>
+                    <label class="form-label text-xs font-bold text-slate-600">Nama SubCont</label>
+                    <input type="text" name="subcont_name" id="edit_subcont_name" class="form-control form-control-sm" required>
                 </div>
 
                 <div>
-                    <label class="form-label text-xs font-bold text-slate-600">Kode Perusahaan</label>
-                    <input type="text" name="customer_code" id="edit_customer_code" class="form-control form-control-sm" required>
+                    <label class="form-label text-xs font-bold text-slate-600">Category</label>
+                    <select name="category" id="edit_category" class="form-select form-select-sm" required>
+                        <option value="">-- Pilih Category --</option>
+                        <option value="Miko Plastik">Miko Plastik</option>
+                        <option value="Miko Cord CP">Miko Cord CP</option>
+                        <option value="Miko Material">Miko Material</option>
+                    </select>
                 </div>
             </div>
             <div class="flex justify-end gap-2 p-4 border-t border-slate-100 bg-slate-50">
-                <button type="button" onclick="closeModal('modalEditCustomer')" class="btn btn-sm btn-secondary">Batal</button>
+                <button type="button" onclick="closeModal('modalEditSubcont')" class="btn btn-sm btn-secondary">Batal</button>
                 <button type="submit" class="btn btn-sm btn-warning">Update</button>
             </div>
         </form>
     </div>
 </div>
 
+<!-- 3. MODAL IMPORT EXCEL -->
+<div id="modalImportSubcont" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+        <form action="/subconts/import" method="POST" enctype="multipart/form-data">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200 bg-slate-50">
+                <h5 class="font-bold text-slate-800">Import Master SubCont dari Excel</h5>
+                <button type="button" onclick="closeModal('modalImportSubcont')" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2">&times;</button>
+            </div>
+            <div class="p-4 space-y-3">
+                <p class="text-xs text-slate-500">
+                    Format kolom Excel: <br>
+                    <strong>Col A:</strong> Nama SubCont | <strong>Col B:</strong> Category
+                </p>
+                <div>
+                    <label class="form-label text-xs font-bold text-slate-600">Pilih File Excel (.xlsx / .xls)</label>
+                    <input type="file" name="excel_file" class="form-control form-control-sm" accept=".xlsx, .xls" required>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 p-4 border-t border-slate-100 bg-slate-50">
+                <button type="button" onclick="closeModal('modalImportSubcont')" class="btn btn-sm btn-secondary">Batal</button>
+                <button type="submit" class="btn btn-sm btn-success">Upload & Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- FORM DELETE HIDDEN -->
-<form id="formDeleteCustomer" action="/customers/delete" method="POST" class="d-none">
-    <input type="hidden" name="id" id="delete_customer_id">
+<form id="formDeleteSubcont" action="/subconts/delete" method="POST" class="d-none">
+    <input type="hidden" name="id" id="delete_subcont_id">
 </form>
 
 <!-- JAVASCRIPT SYSTEM & PAGINATION -->
@@ -175,21 +214,21 @@
     }
 
     function openAddModal() {
-        openModal('modalAddCustomer');
+        openModal('modalAddSubcont');
     }
 
-    function openEditModal(customer) {
-        document.getElementById('edit_customer_id').value = customer.id;
-        document.getElementById('edit_customer_name').value = customer.customer_name || '';
-        document.getElementById('edit_customer_code').value = customer.customer_code || '';
+    function openEditModal(subcont) {
+        document.getElementById('edit_subcont_id').value = subcont.id;
+        document.getElementById('edit_subcont_name').value = subcont.subcont_name || '';
+        document.getElementById('edit_category').value = subcont.category || '';
 
-        openModal('modalEditCustomer');
+        openModal('modalEditSubcont');
     }
 
-    function confirmDelete(id, customerName) {
-        if (confirm(`Yakin ingin menghapus Customer '${customerName}'?`)) {
-            document.getElementById('delete_customer_id').value = id;
-            document.getElementById('formDeleteCustomer').submit();
+    function confirmDelete(id, subcontName) {
+        if (confirm(`Yakin ingin menghapus SubCont '${subcontName}'?`)) {
+            document.getElementById('delete_subcont_id').value = id;
+            document.getElementById('formDeleteSubcont').submit();
         }
     }
 
@@ -253,7 +292,7 @@
 
     // Close modal jika user klik backdrop
     window.onclick = function(event) {
-        ['modalAddCustomer', 'modalEditCustomer'].forEach(id => {
+        ['modalAddSubcont', 'modalEditSubcont', 'modalImportSubcont'].forEach(id => {
             const modal = document.getElementById(id);
             if (event.target === modal) {
                 closeModal(id);

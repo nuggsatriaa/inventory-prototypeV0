@@ -1,3 +1,10 @@
+<?php
+$uri = $_SERVER['REQUEST_URI'] ?? '';
+
+// Cek status grup menu untuk auto-expand dropdown
+$isMasterActive = str_contains($uri, '/parts') || str_contains($uri, '/groups-lanes') || str_contains($uri, '/subconts') || str_contains($uri, '/customers');
+$isStockActive  = str_contains($uri, '/inventory') || str_contains($uri, '/single-part');
+?>
 <!DOCTYPE html>
 <html lang="id">
 
@@ -12,6 +19,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Tailwind CSS (via CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- DataTables Bootstrap 5 CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 
     <style>
         body {
@@ -21,32 +30,14 @@
 
         .sidebar {
             width: 260px;
-            min-height: 100vh;
             background-color: #0f172a;
-            /* Dark Slate */
             color: #f8fafc;
+            transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
         }
 
-        .sidebar .nav-link {
-            color: #94a3b8;
-            border-radius: 0.5rem;
-            padding: 0.65rem 1rem;
-            margin-bottom: 0.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transition: all 0.2s ease-in-out;
-        }
-
-        .sidebar .nav-link:hover {
-            background-color: #1e293b;
-            color: #38bdf8;
-        }
-
-        .sidebar .nav-link.active {
-            background-color: #0284c7;
-            color: #ffffff;
-            font-weight: 600;
+        /* State ketika Sidebar Tersembunyi */
+        .sidebar.collapsed {
+            margin-left: -260px;
         }
 
         .main-content {
@@ -56,77 +47,118 @@
     </style>
 </head>
 
-<body class="flex min-h-screen">
+<body class="flex h-screen overflow-hidden bg-slate-100">
 
-    <!-- SIDEBAR NAVIGASI -->
-    <aside class="sidebar flex flex-col justify-between p-4 shrink-0 shadow-lg">
+    <!-- SIDEBAR NAVIGASI (Toggleable & Independent Scroll) -->
+    <aside id="sidebar" class="sidebar w-64 h-screen overflow-y-auto flex flex-col justify-between p-4 shrink-0 shadow-lg bg-slate-900 text-slate-300">
         <div>
             <!-- Header Brand Stanley -->
-            <div class="brand-header pb-4 mb-4 border-b border-slate-700 flex items-center gap-3">
-                <div class="bg-blue-600 text-white font-bold p-2.5 rounded-lg text-lg leading-none shadow">
-                    ISE
-                </div>
-                <div>
-                    <h1 class="text-sm font-bold text-white tracking-wide uppercase">PT Stanley Electric</h1>
-                    <p class="text-xs text-slate-400">Inventory Management</p>
+            <div class="brand-header pb-4 mb-4 border-b border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-600 text-white font-bold p-2.5 rounded-lg text-lg leading-none shadow">
+                        ISE
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-bold text-white tracking-wide uppercase">PT Stanley Electric</h1>
+                        <p class="text-xs text-slate-400">Digital Inventory System</p>
+                    </div>
                 </div>
             </div>
 
             <!-- Menu Navigation -->
-            <nav class="nav flex-column">
+            <nav class="nav flex flex-col gap-1">
                 <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">Main Menu</div>
 
-                <a href="/" class="nav-link <?= ($_SERVER['REQUEST_URI'] == '/' || $_SERVER['REQUEST_URI'] == '/dashboard') ? 'active' : '' ?>">
-                    <i class="bi bi-grid-1x2-fill text-lg"></i> Dashboard
+                <a href="/" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-slate-800 text-sm font-medium <?= ($uri == '/' || $uri == '/dashboard') ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400' ?>">
+                    <i class="bi bi-grid-1x2-fill text-lg"></i>
+                    <span>Dashboard</span>
                 </a>
 
-                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider my-2 px-3">Master Data</div>
+                <!-- DROPDOWN 1: MASTER DATA -->
+                <div class="mt-2">
+                    <button type="button"
+                        onclick="toggleSidebarMenu('menu-master', 'icon-master')"
+                        class="w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors hover:bg-slate-800 text-sm font-medium cursor-pointer text-slate-400 <?= $isMasterActive ? 'text-white font-bold' : '' ?>">
+                        <div class="flex items-center gap-3">
+                            <i class="bi bi-database-fill text-lg text-blue-400"></i>
+                            <span>Master Data</span>
+                        </div>
+                        <i id="icon-master" class="bi bi-chevron-down transition-transform duration-200 <?= $isMasterActive ? 'rotate-180' : '' ?>"></i>
+                    </button>
 
-                <a href="/parts" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/parts') ? 'active' : '' ?>">
-                    <i class="bi bi-box-seam-fill text-lg"></i> Master Parts (ICS)
-                </a>
+                    <div id="menu-master" class="pl-6 space-y-1 mt-1 <?= $isMasterActive ? '' : 'hidden' ?>">
+                        <a href="/parts" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-slate-800 text-slate-400 <?= str_contains($uri, '/parts') ? 'bg-blue-600/30 text-blue-400 font-bold border-l-2 border-blue-500' : '' ?>">
+                            <i class="bi bi-box-seam-fill"></i> Master Parts
+                        </a>
+                        <a href="/groups-lanes" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-slate-800 text-slate-400 <?= str_contains($uri, '/groups-lanes') ? 'bg-blue-600/30 text-blue-400 font-bold border-l-2 border-blue-500' : '' ?>">
+                            <i class="bi bi-diagram-3-fill"></i> Group & Lane Produksi
+                        </a>
+                        <a href="/subconts" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-slate-800 text-slate-400 <?= str_contains($uri, '/subconts') ? 'bg-blue-600/30 text-blue-400 font-bold border-l-2 border-blue-500' : '' ?>">
+                            <i class="bi bi-truck-front-fill"></i> Data SubCont
+                        </a>
+                        <a href="/customers" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-slate-800 text-slate-400 <?= str_contains($uri, '/customers') ? 'bg-blue-600/30 text-blue-400 font-bold border-l-2 border-blue-500' : '' ?>">
+                            <i class="bi bi-building-fill"></i> Data Customer
+                        </a>
+                    </div>
+                </div>
 
-                <a href="/groups-lanes" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/groups-lanes') ? 'active' : '' ?>">
-                    <i class="bi bi-diagram-3-fill text-lg"></i> Group & Lane Produksi
-                </a>
+                <!-- DROPDOWN 2: TRANSAKSI STOK -->
+                <div class="mt-2">
+                    <button type="button"
+                        onclick="toggleSidebarMenu('menu-stok', 'icon-stok')"
+                        class="w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors hover:bg-slate-800 text-sm font-medium cursor-pointer text-slate-400 <?= $isStockActive ? 'text-white font-bold' : '' ?>">
+                        <div class="flex items-center gap-3">
+                            <i class="bi bi-box-arrow-in-right text-lg text-emerald-400"></i>
+                            <span>Stok</span>
+                        </div>
+                        <i id="icon-stok" class="bi bi-chevron-down transition-transform duration-200 <?= $isStockActive ? 'rotate-180' : '' ?>"></i>
+                    </button>
 
-                <a href="/customers" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/customers') ? 'active' : '' ?>">
-                    <i class="bi bi-building-fill text-lg"></i> Data Customer
-                </a>
-
-                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider my-2 px-3">Transaksi Stok</div>
-
-                <a href="/inventory/production" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/inventory/production') ? 'active' : '' ?>">
-                    <i class="bi bi-arrow-left-right text-lg"></i> Stok Produksi
-                </a>
-
-                <a href="/inventory/whp" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/inventory/whp') ? 'active' : '' ?>">
-                    <i class="bi bi-houses-fill text-lg"></i> Stok WHP
-                </a>
-
-                <a href="/single-part" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/single-part') ? 'active' : '' ?>">
-                    <i class="bi bi-search text-lg"></i> Single Part (BOM)
-                </a>
+                    <div id="menu-stok" class="pl-6 space-y-1 mt-1 <?= $isStockActive ? '' : 'hidden' ?>">
+                        <a href="/inventory/production" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-slate-800 text-slate-400 <?= str_contains($uri, '/inventory/production') ? 'bg-blue-600/30 text-blue-400 font-bold border-l-2 border-blue-500' : '' ?>">
+                            <i class="bi bi-arrow-left-right"></i> Stok Produksi
+                        </a>
+                        <a href="/inventory/whp" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-slate-800 text-slate-400 <?= str_contains($uri, '/inventory/whp') ? 'bg-blue-600/30 text-blue-400 font-bold border-l-2 border-blue-500' : '' ?>">
+                            <i class="bi bi-houses-fill"></i> Stok WHP
+                        </a>
+                        <a href="/single-part" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors hover:bg-slate-800 text-slate-400 <?= str_contains($uri, '/single-part') ? 'bg-blue-600/30 text-blue-400 font-bold border-l-2 border-blue-500' : '' ?>">
+                            <i class="bi bi-search"></i> Single Part (BOM)
+                        </a>
+                    </div>
+                </div>
             </nav>
         </div>
 
-        <!-- Footer Sidebar / User Info -->
-        <div class="pt-4 border-t border-slate-700">
+        <!-- Footer Sidebar -->
+        <div class="pt-4 border-t border-slate-800">
             <div class="flex items-center justify-between text-xs text-slate-400">
-                <span>Versi Application 1.0</span>
-                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Production Control Dept</span>
+                <!-- <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> -->
+            </div>
+            <div>
+                <footer class="flex items-center justify-between text-xs text-slate-400">
+                    &copy; <?= date('Y') ?> PT Stanley Electric Indonesia
+
+                </footer>
             </div>
         </div>
     </aside>
 
     <!-- MAIN CONTENT AREA -->
-    <div class="main-content flex flex-col flex-1">
+    <div class="main-content flex flex-col flex-1 h-screen overflow-hidden">
 
-        <!-- TOP NAVBAR -->
-        <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm">
-            <div class="flex items-center gap-2 text-slate-600 font-medium text-sm">
-                <i class="bi bi-clock-history text-blue-600"></i>
-                <span>Shift Aktif: <strong class="text-blue-700 font-bold" id="liveShiftBadge">Loading...</strong></span>
+        <!-- TOP NAVBAR (Dengan Tombol Toggle Sidebar) -->
+        <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0">
+            <div class="flex items-center gap-4">
+                <!-- Tombol Toggle Hide/Show Sidebar -->
+                <button type="button" onclick="toggleSidebarHide()" class="text-slate-600 hover:text-slate-900 p-1 rounded-md transition-colors focus:outline-none">
+                    <i class="bi bi-list text-2xl"></i>
+                </button>
+
+                <div class="flex items-center gap-2 text-slate-600 font-medium text-sm">
+                    <i class="bi bi-clock-history text-blue-600"></i>
+                    <span>Shift Aktif: <strong class="text-blue-700 font-bold" id="liveShiftBadge">Loading...</strong></span>
+                </div>
             </div>
 
             <!-- Profile & Logout Dropdown -->
@@ -145,18 +177,42 @@
             </div>
         </header>
 
-        <!-- DYNAMIC PAGE CONTENT -->
-        <main class="p-6 flex-1">
-            <?= $content ?>
+        <!-- DYNAMIC PAGE CONTENT & STICKY FOOTER -->
+        <main class="p-6 flex-1 overflow-y-auto flex flex-col justify-between">
+
+            <!-- Area Halaman Utama -->
+            <div class="w-full">
+                <?= $content ?>
+            </div>
+
         </main>
 
     </div>
 
     <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/jszip/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 
-    <!-- Script Auto Shift Indicator -->
+    <!-- Script Interactive Layout & Sidebar -->
     <script>
+        // Toggle Menyembunyikan / Menampilkan Sidebar
+        function toggleSidebarHide() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // Toggle Submenu Dropdown
+        function toggleSidebarMenu(menuId, iconId) {
+            const menu = document.getElementById(menuId);
+            const icon = document.getElementById(iconId);
+
+            if (menu) menu.classList.toggle('hidden');
+            if (icon) icon.classList.toggle('rotate-180');
+        }
+
+        // Shift Indicator Auto Update
         function updateShiftBadge() {
             const now = new Date();
             const hours = now.getHours();
@@ -164,10 +220,6 @@
             const timeInMinutes = hours * 60 + minutes;
 
             let shiftText = "";
-
-            // Shift 3: 00:00 - 07:45 (0 - 465 mins)
-            // Shift 1: 07:46 - 16:45 (466 - 1005 mins)
-            // Shift 2: 16:46 - 23:59 (1006 - 1439 mins)
             if (timeInMinutes >= 466 && timeInMinutes <= 1005) {
                 shiftText = "SHIFT 1 (Pagi)";
             } else if (timeInMinutes >= 1006 && timeInMinutes <= 1439) {
@@ -180,7 +232,29 @@
         }
 
         updateShiftBadge();
-        setInterval(updateShiftBadge, 60000); // Update tiap 1 menit
+        setInterval(updateShiftBadge, 60000);
+
+        $(document).ready(function() {
+            if ($('#dataTable').length) {
+                $('#dataTable').DataTable({
+                    "lengthMenu": [10, 30, 50, 100],
+                    "pageLength": 10,
+                    "language": {
+                        "search": "Cari:",
+                        "lengthMenu": "Tampilkan _MENU_ data",
+                        "info": "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                        "infoEmpty": "Data tidak ditemukan",
+                        "zeroRecords": "Tidak ada data yang cocok",
+                        "paginate": {
+                            "first": "Awal",
+                            "last": "Akhir",
+                            "next": "Next",
+                            "previous": "Prev"
+                        }
+                    }
+                });
+            }
+        });
     </script>
 </body>
 
